@@ -40,3 +40,17 @@ export interface PetEvent {
   message?: string;
   timestamp?: number;
 }
+
+declare global {
+  interface Window {
+    petCompanionDesktop?: {
+      setOverlayInteractivity(interactive: boolean): void;
+      updateHoverRegion(region: {
+        left: number;
+        top: number;
+        right: number;
+        bottom: number;
+      } | null): void;
+    };
+  }
+}

@@ -82,6 +82,19 @@ function savePosition(p: Position) {
   }
 }
 
+function setDesktopOverlayInteractivity(interactive: boolean) {
+  window.petCompanionDesktop?.setOverlayInteractivity(interactive);
+}
+
+function setDesktopHoverRegion(region: {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+} | null) {
+  window.petCompanionDesktop?.updateHoverRegion(region);
+}
+
 export function PetOverlay({ pet }: Props) {
   const active = useMemo(() => resolveActivePet(pet), [pet]);
   const eventMode = pet?.eventMode ?? "full";
@@ -94,6 +107,7 @@ export function PetOverlay({ pet }: Props) {
   const [ambientRowId, setAmbientRowId] = useState<string | null>(null);
   const [bubbleLine, setBubbleLine] = useState<string | null>(null);
   const [hovered, setHovered] = useState(false);
+  const overlayRef = useRef<HTMLDivElement | null>(null);
   const dragRef = useRef<{
     startX: number;
     startY: number;
@@ -336,6 +350,9 @@ export function PetOverlay({ pet }: Props) {
     }
     setInteraction(hovered ? "hover" : "idle");
     armWaitingTimer();
+    if (!hovered) {
+      setDesktopOverlayInteractivity(false);
+    }
   }, [ambientIdx, armWaitingTimer, hovered, lines]);
 
   useEffect(() => {
@@ -381,6 +398,7 @@ export function PetOverlay({ pet }: Props) {
 
   const onMouseDown = (event: React.MouseEvent<HTMLDivElement>) => {
     event.preventDefault();
+    setDesktopOverlayInteractivity(true);
     console.info("[pet] mouse-down", {
       button: event.button,
       clientX: event.clientX,
@@ -394,19 +412,53 @@ export function PetOverlay({ pet }: Props) {
   };
 
   const onPointerEnter = () => {
+    setDesktopOverlayInteractivity(true);
     setHovered(true);
     if (!dragRef.current) setInteraction("hover");
     armWaitingTimer();
   };
 
   const onPointerLeave = () => {
+    setDesktopOverlayInteractivity(false);
     setHovered(false);
     if (!dragRef.current) setInteraction("idle");
     armWaitingTimer();
   };
 
+  useEffect(() => {
+    return () => {
+      setDesktopOverlayInteractivity(false);
+      setDesktopHoverRegion(null);
+    };
+  }, []);
+
+  useEffect(() => {
+    const publishRegion = () => {
+      const rect = overlayRef.current?.getBoundingClientRect();
+      if (!rect) {
+        setDesktopHoverRegion(null);
+        return;
+      }
+      setDesktopHoverRegion({
+        left: Math.round(rect.left),
+        top: Math.round(rect.top),
+        right: Math.round(rect.right),
+        bottom: Math.round(rect.bottom),
+      });
+    };
+
+    publishRegion();
+    const id = window.setInterval(publishRegion, 120);
+    window.addEventListener("resize", publishRegion);
+    return () => {
+      window.clearInterval(id);
+      window.removeEventListener("resize", publishRegion);
+    };
+  }, [bubbleOpen, petScale, position.bottom, position.right]);
+
   return (
     <div
+      ref={overlayRef}
       className="pet-overlay"
       role="complementary"
       aria-label="Pet companion"
