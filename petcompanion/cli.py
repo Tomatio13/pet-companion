@@ -5,7 +5,9 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import os
 import shutil
+import subprocess
 import sys
 import webbrowser
 from pathlib import Path
@@ -18,6 +20,7 @@ from petcompanion.config import load_config, save_config, pets_dir, ensure_dirs
 
 DEFAULT_PORT = 19821
 LOG = logging.getLogger("pet-companion")
+OVERLAY_BACKENDS = ("auto", "gtk", "electron", "browser")
 
 
 def _hook_read_payload() -> dict:
@@ -159,7 +162,9 @@ def cmd_start(args: argparse.Namespace) -> None:
             print(f"Switched pet to '{args.pet}'")
 
     url = f"http://{args.host}:{args.port}"
+    selected_backend = _resolve_overlay_backend(args)
     print(f"Pet Companion starting at {url}")
+    print(f"Overlay backend: {selected_backend}")
 
     if not args.no_open:
         import threading
@@ -168,10 +173,12 @@ def cmd_start(args: argparse.Namespace) -> None:
             import time
 
             time.sleep(1.0)
-            if args.browser:
-                webbrowser.open(url)
-            else:
-                _launch_overlay(url, verbose=args.verbose)
+            _launch_with_backend(
+                url,
+                backend=selected_backend,
+                verbose=args.verbose,
+                explicit_backend=args.overlay_backend != "auto" or args.browser,
+            )
 
         threading.Thread(target=_open, daemon=True).start()
 
@@ -207,21 +214,85 @@ def _find_overlay_script() -> tuple[str | None, str | None]:
     return None, overlay_path
 
 
-def _launch_overlay(url: str, verbose: bool = False) -> None:
-    """Launch the frameless GTK overlay window in a subprocess."""
-    import subprocess
-
+def _overlay_log_path(name: str) -> Path:
     log_path = Path.home() / ".config" / "pet-companion" / "overlay.log"
     log_path.parent.mkdir(parents=True, exist_ok=True)
+    return log_path.parent / name
+
+
+def _desktop_dir() -> Path:
+    package_dir = Path(__file__).resolve().parent
+    packaged_desktop = package_dir / "desktop"
+    if (packaged_desktop / "main.js").exists():
+        return packaged_desktop
+    repo_desktop = package_dir.parent / "desktop"
+    return repo_desktop
+
+
+def _find_electron_executable() -> str | None:
+    desktop_dir = _desktop_dir()
+    local_candidates = [
+        desktop_dir / "node_modules" / ".bin" / "electron",
+        desktop_dir / "node_modules" / ".bin" / "electron.cmd",
+    ]
+    for candidate in local_candidates:
+        if candidate.exists():
+            return str(candidate)
+    return shutil.which("electron")
+
+
+def _launch_electron_overlay(url: str, verbose: bool = False) -> bool:
+    electron = _find_electron_executable()
+    if electron is None:
+        LOG.warning(
+            "Electron overlay is unavailable. Install desktop deps in %s",
+            _desktop_dir(),
+        )
+        return False
+
+    main_js = _desktop_dir() / "main.js"
+    if not main_js.exists():
+        LOG.error("Electron overlay entrypoint is missing: %s", main_js)
+        return False
+
+    log_path = _overlay_log_path("electron-overlay.log")
+    env = os.environ.copy()
+    env["PET_COMPANION_URL"] = url
+    try:
+        with open(log_path, "a", encoding="utf-8") as log_file:
+            print(
+                f"Launching Electron overlay: {url} (electron={electron})",
+                file=log_file,
+                flush=True,
+            )
+            cmd = [electron, str(main_js), "--url", url]
+            if verbose:
+                cmd.append("--verbose")
+            subprocess.Popen(
+                cmd,
+                cwd=_desktop_dir(),
+                env=env,
+                stdout=log_file,
+                stderr=log_file,
+            )
+        LOG.info("Electron overlay launched (electron=%s, log=%s)", electron, log_path)
+        return True
+    except Exception as e:
+        LOG.error("Failed to launch Electron overlay: %s", e)
+        return False
+
+
+def _launch_gtk_overlay(url: str, verbose: bool = False) -> bool:
+    """Launch the frameless GTK overlay window in a subprocess."""
+    log_path = _overlay_log_path("overlay.log")
 
     python, overlay_path = _find_overlay_script()
     if python is None or overlay_path is None:
-        LOG.error("Cannot find Python with gi/WebKit2 for overlay")
-        webbrowser.open(url)
-        return
+        LOG.warning("Cannot find Python with gi/WebKit2 for GTK overlay")
+        return False
 
     try:
-        with open(log_path, "a") as log_file:
+        with open(log_path, "a", encoding="utf-8") as log_file:
             print(
                 f"Launching overlay: {url} (python={python})", file=log_file, flush=True
             )
@@ -230,15 +301,79 @@ def _launch_overlay(url: str, verbose: bool = False) -> None:
                 cmd.append("--verbose")
             subprocess.Popen(cmd, stdout=log_file, stderr=log_file)
         LOG.info("Overlay launched (python=%s, log=%s)", python, log_path)
+        return True
     except Exception as e:
         LOG.error("Failed to launch overlay: %s", e)
+        return False
+
+
+def _resolve_overlay_backend(args: argparse.Namespace) -> str:
+    if getattr(args, "browser", False):
+        return "browser"
+    backend = getattr(args, "overlay_backend", "auto")
+    if backend != "auto":
+        return backend
+    if _find_electron_executable() is not None:
+        return "electron"
+    if sys.platform.startswith("linux") and _find_overlay_script()[0] is not None:
+        return "gtk"
+    return "browser"
+
+
+def _launch_with_backend(
+    url: str,
+    *,
+    backend: str,
+    verbose: bool = False,
+    explicit_backend: bool = False,
+) -> None:
+    if backend == "browser":
         webbrowser.open(url)
+        return
+    if backend == "gtk":
+        if _launch_gtk_overlay(url, verbose=verbose):
+            return
+        if explicit_backend:
+            LOG.error("GTK overlay launch failed; not falling back because backend was explicitly requested")
+            return
+        LOG.warning("GTK overlay launch failed; falling back to browser")
+        webbrowser.open(url)
+        return
+    if backend == "electron":
+        if _launch_electron_overlay(url, verbose=verbose):
+            return
+        if explicit_backend:
+            LOG.error("Electron overlay launch failed; not falling back because backend was explicitly requested")
+            return
+        LOG.warning("Electron overlay launch failed; falling back to browser")
+        webbrowser.open(url)
+        return
+    if backend == "auto":
+        _launch_with_backend(
+            url,
+            backend=_resolve_overlay_backend(
+                argparse.Namespace(browser=False, overlay_backend="auto")
+            ),
+            verbose=verbose,
+            explicit_backend=False,
+        )
+        return
+    raise ValueError(f"Unknown overlay backend: {backend}")
 
 
 def cmd_overlay(args: argparse.Namespace) -> None:
-    from petcompanion.overlay import main as overlay_main
+    backend = _resolve_overlay_backend(args)
+    if backend == "gtk":
+        from petcompanion.overlay import main as overlay_main
 
-    overlay_main(args)
+        overlay_main(args)
+        return
+    if backend == "electron":
+        ok = _launch_electron_overlay(args.url, verbose=args.verbose)
+        if not ok:
+            sys.exit(1)
+        return
+    webbrowser.open(args.url)
 
 
 def cmd_emit(args: argparse.Namespace) -> None:
@@ -385,7 +520,13 @@ def main() -> None:
     p_start.add_argument(
         "--browser",
         action="store_true",
-        help="Open in a normal browser instead of the default GTK overlay",
+        help="Open in a normal browser instead of the default desktop overlay",
+    )
+    p_start.add_argument(
+        "--overlay-backend",
+        choices=OVERLAY_BACKENDS,
+        default="auto",
+        help="Overlay backend: auto, gtk, electron, or browser",
     )
     p_start.add_argument(
         "--no-open", action="store_true", help="Don't open browser/overlay"
@@ -395,8 +536,14 @@ def main() -> None:
     p_start.set_defaults(func=cmd_start)
 
     # overlay
-    p_overlay = sub.add_parser("overlay", help="Open frameless overlay window")
+    p_overlay = sub.add_parser("overlay", help="Open the desktop overlay window")
     p_overlay.add_argument("--url", default=f"http://127.0.0.1:{DEFAULT_PORT}")
+    p_overlay.add_argument(
+        "--overlay-backend",
+        choices=OVERLAY_BACKENDS,
+        default="auto",
+        help="Overlay backend: auto, gtk, electron, or browser",
+    )
     p_overlay.add_argument("--verbose", "-v", action="store_true")
     p_overlay.set_defaults(func=cmd_overlay)
 
