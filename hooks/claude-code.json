@@ -1,0 +1,49 @@
+{
+  "_comment": "Add these hook entries to ~/.claude/settings.json under the 'hooks' key",
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "pet-companion hook-emit user-prompt-submit --port 19821",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "pet-companion hook-emit pre-tool-use --port 19821",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "pet-companion hook-emit post-tool-use --port 19821",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "pet-companion hook-emit stop --port 19821",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}

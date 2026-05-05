@@ -1,0 +1,49 @@
+{
+  "_comment": "Add these entries to ~/.codex/hooks.json under the 'hooks' key",
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "pet-companion hook-emit user-prompt-submit --port 19822",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "pet-companion hook-emit pre-tool-use --port 19822",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "pet-companion hook-emit post-tool-use --port 19822",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "pet-companion hook-emit stop --port 19822",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}
