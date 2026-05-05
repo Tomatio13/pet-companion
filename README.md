@@ -33,21 +33,61 @@
 
 ```bash
 cd pet-companion
-pip install -e .
+pipx install -e .
 
-# Start the desktop overlay on Linux
+# Start the default desktop overlay
 pet-companion start
 
 # Start in a normal browser tab instead
 pet-companion start --browser
+
+# Force the Electron overlay backend
+pet-companion start --overlay-backend electron
 ```
 
-The default `start` command opens the GTK desktop overlay.
+The default `start` command now prefers the Electron desktop overlay.
+On Linux, it falls back to GTK if Electron is unavailable.
 Use `--browser` if you want the in-browser mode.
+
+## 🪟 Electron Overlay
+
+Electron is the recommended path for Windows / macOS support and also
+works on Linux as an alternative to GTK.
+
+Install the desktop dependencies once:
+
+```bash
+cd desktop
+npm install
+```
+
+Then launch it through the Python CLI:
+
+```bash
+pet-companion start --overlay-backend electron
+```
+
+Available backends:
+
+- `auto`
+  Prefer Electron, then GTK on Linux, then browser
+- `gtk`
+  Force the Linux GTK overlay fallback
+- `electron`
+  Force the Electron overlay shell
+- `browser`
+  Open a normal browser window
 
 ## 🖥️ Overlay Mode
 
-Overlay mode is implemented with Linux-specific desktop features:
+The project currently has two desktop overlay implementations:
+
+- Electron
+  Cross-platform primary backend for Windows, macOS, and Linux
+- GTK
+  Linux-specific fallback backend
+
+GTK overlay mode is implemented with Linux-specific desktop features:
 
 - GTK3 for native transparent top-level windows
 - WebKit2GTK for rendering the pet UI
@@ -56,15 +96,18 @@ Overlay mode is implemented with Linux-specific desktop features:
 
 Notes:
 
-- The current desktop overlay is Linux-first.
+- Electron is now the primary desktop backend.
+- GTK remains available as a Linux fallback.
 - The implementation forces `GDK_BACKEND=x11` to support transparent overlay behavior reliably.
 - Browser mode works as a fallback when overlay dependencies are unavailable.
 
 ## 🧰 CLI
 
 ```bash
-pet-companion start [--pet tux]                    # Start GTK desktop overlay
+pet-companion start [--pet tux]                    # Start the default desktop overlay
 pet-companion start --browser [--pet tux]          # Start in a normal browser
+pet-companion start --overlay-backend gtk          # Force GTK overlay on Linux
+pet-companion start --overlay-backend electron     # Force Electron overlay
 pet-companion emit <event-type> [options]          # Send an event
 pet-companion list                                 # List available pets
 pet-companion install-hooks <agent>                # Show hook config for an agent
