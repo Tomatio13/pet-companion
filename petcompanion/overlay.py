@@ -24,6 +24,7 @@ log = logging.getLogger("pet-companion")
 DEFAULT_PET_WIDTH = 96
 DEFAULT_PET_HEIGHT = 96
 DEFAULT_PET_MARGIN = 24
+HANDLE_POLL_MS = 120
 
 
 def _has_deps() -> bool:
@@ -311,7 +312,7 @@ def run_overlay(url: str = "http://127.0.0.1:19821") -> None:
     def _start_polling() -> bool:
         _set_main_clickthrough()
         _move_handle(_pos["x"], _pos["y"], _pos["w"], _pos["h"])
-        GLib.timeout_add(200, _poll, webview)
+        GLib.timeout_add(HANDLE_POLL_MS, _poll, webview)
         return False
 
     GLib.timeout_add(500, _start_polling)

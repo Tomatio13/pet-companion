@@ -312,6 +312,7 @@ Main config is stored at `~/.config/pet-companion/pet.json`:
   "adopted": true,
   "enabled": true,
   "petId": "jovithulhu",
+  "walkingEnabled": true,
   "petScale": 1.5,
   "custom": {
     "name": "Buddy",
@@ -330,6 +331,8 @@ Key fields:
   Active pet ID. Use `pet-companion list` to inspect available pets.
 - `petScale`
   Overlay scale multiplier. `1` is default, `1.5` is 150%, `2` is 200%.
+- `walkingEnabled`
+  Set `true` to enable autonomous walking, `false` to disable it.
 - `custom.accent`
   Accent color for the bubble border and pet highlight.
 - `custom.bubbleBg`

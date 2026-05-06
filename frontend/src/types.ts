@@ -29,6 +29,7 @@ export interface PetConfig {
   enabled: boolean;
   petId: string;
   eventMode?: 'full' | 'message-only';
+  walkingEnabled?: boolean;
   petScale?: number;
   custom: PetCustom;
 }
