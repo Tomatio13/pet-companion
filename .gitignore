@@ -24,3 +24,8 @@ build/
 
 .claude/
 .serena/
+
+Flow/
+.codex/
+AGENTS.*
+.ai-plc-version

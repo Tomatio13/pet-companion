@@ -11,6 +11,7 @@ DEFAULT_PET_CONFIG: dict = {
     "enabled": True,
     "petId": "tux",
     "eventMode": "full",
+    "walkingEnabled": True,
     "petScale": 1,
     "custom": {
         "name": "Tux",
