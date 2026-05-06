@@ -18,6 +18,8 @@
   <img src="https://img.shields.io/badge/Linux-overlay-black" alt="Linux overlay">
 </p>
 
+![image](assets/image.jpg)
+
 ## ✨ Features
 
 - 8 bundled pets including Clippy, Dario, Tux, YoRHa 2B, and more

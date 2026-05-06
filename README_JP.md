@@ -18,6 +18,8 @@
   <img src="https://img.shields.io/badge/Linux-overlay-black" alt="Linux overlay">
 </p>
 
+![image](assets/image.jpg)
+
 ## ✨ 特徴
 
 - Clippy、Dario、Tux、YoRHa 2B などの同梱 pet
