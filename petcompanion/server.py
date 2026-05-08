@@ -67,6 +67,7 @@ class ThreadedServer(ThreadingMixIn, HTTPServer):
 
 class _Handler(BaseHTTPRequestHandler):
     event_hub: EventHub
+    shutdown_server: callable | None = None
 
     def log_message(self, fmt: str, *args: object) -> None:
         log.debug(fmt, *args)
@@ -165,6 +166,9 @@ class _Handler(BaseHTTPRequestHandler):
         if path == "/api/pet":
             return self._handle_save_pet()
 
+        if path == "/api/shutdown":
+            return self._handle_shutdown()
+
         self._json(404, {"error": "not found"})
 
     def _handle_emit(self) -> None:
@@ -187,6 +191,12 @@ class _Handler(BaseHTTPRequestHandler):
         save_config(config)
         self.event_hub.emit({"type": "config-updated"})
         self._json(200, {"ok": True})
+
+    def _handle_shutdown(self) -> None:
+        shutdown_server = self.shutdown_server
+        self._json(200, {"ok": True})
+        if shutdown_server is not None:
+            threading.Thread(target=shutdown_server, daemon=True).start()
 
     # ------------------------------------------------------------------
     # PUT
@@ -214,6 +224,7 @@ def start_server(host: str = "127.0.0.1", port: int = 19821) -> None:
     _Handler.event_hub = hub
 
     server = ThreadedServer((host, port), _Handler)
+    _Handler.shutdown_server = server.shutdown
     log.info("Pet Companion listening on http://%s:%d", host, port)
 
     def _shutdown(signum: int, frame: object) -> None:
