@@ -40,6 +40,9 @@ pipx install -e .
 # Start the default desktop overlay
 pet-companion start
 
+# Stop the running desktop companion
+pet-companion finish
+
 # Start in a normal browser tab instead
 pet-companion start --browser
 
@@ -51,6 +54,7 @@ pet-companion start --overlay-backend electron
 The default `start` command uses GTK on Linux.
 On Windows / macOS, it prefers the Electron desktop overlay.
 Use `--browser` if you want the in-browser mode.
+Use `pet-companion finish` or `pet-companion end` to stop it.
 
 ## 🪟 Electron Overlay
 
@@ -114,9 +118,11 @@ Notes:
 
 ```bash
 pet-companion start [--pet tux]                    # Start the default desktop overlay
+pet-companion finish                               # Stop the running companion
+pet-companion end                                  # Alias for finish
 pet-companion start --browser [--pet tux]          # Start in a normal browser
 pet-companion start --overlay-backend gtk          # Force GTK overlay on Linux
-pet-companion start --overlay-backend electron     # Force Electron overlay
+pet-companion start --overlay-backend electron     # Force Electron overlay (Windows / macOS)
 pet-companion emit <event-type> [options]          # Send an event
 pet-companion list                                 # List available pets
 pet-companion install-hooks <agent>                # Show hook config for an agent
