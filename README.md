@@ -44,17 +44,18 @@ pet-companion start
 pet-companion start --browser
 
 # Force the Electron overlay backend
+# (Windows / macOS only)
 pet-companion start --overlay-backend electron
 ```
 
-The default `start` command now prefers the Electron desktop overlay.
-On Linux, it falls back to GTK if Electron is unavailable.
+The default `start` command uses GTK on Linux.
+On Windows / macOS, it prefers the Electron desktop overlay.
 Use `--browser` if you want the in-browser mode.
 
 ## 🪟 Electron Overlay
 
-Electron is the recommended path for Windows / macOS support and also
-works on Linux as an alternative to GTK.
+Electron is the recommended path for Windows / macOS support.
+Linux uses GTK instead.
 
 Install the desktop dependencies once:
 
@@ -69,10 +70,16 @@ Then launch it through the Python CLI:
 pet-companion start --overlay-backend electron
 ```
 
+On Linux, `electron` is disabled. Use GTK instead:
+
+```bash
+pet-companion start --overlay-backend gtk
+```
+
 Available backends:
 
 - `auto`
-  Prefer Electron, then GTK on Linux, then browser
+  Prefer GTK on Linux, Electron on Windows / macOS, then browser
 - `gtk`
   Force the Linux GTK overlay fallback
 - `electron`
