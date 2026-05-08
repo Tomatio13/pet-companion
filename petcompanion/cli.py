@@ -6,6 +6,7 @@ import argparse
 import json
 import logging
 import os
+import signal
 import shutil
 import subprocess
 import sys
@@ -184,7 +185,34 @@ def cmd_start(args: argparse.Namespace) -> None:
 
     from petcompanion.server import start_server
 
-    start_server(host=args.host, port=args.port)
+    _write_pid_file("server", os.getpid())
+    try:
+        start_server(host=args.host, port=args.port)
+    finally:
+        _remove_pid_file("server")
+
+
+def cmd_finish(args: argparse.Namespace) -> None:
+    url = f"http://127.0.0.1:{args.port}/api/shutdown"
+    req = Request(url, data=b"{}", headers={"Content-Type": "application/json"})
+    try:
+        resp = urlopen(req, timeout=3)
+        result = json.loads(resp.read())
+    except URLError:
+        print(
+            f"Error: Pet Companion is not running on port {args.port}", file=sys.stderr
+        )
+        print("Start it with: pet-companion start", file=sys.stderr)
+        sys.exit(1)
+    if result.get("ok"):
+        overlay_pid = _read_pid_file("overlay")
+        if overlay_pid is not None:
+            _terminate_pid(overlay_pid)
+            _remove_pid_file("overlay")
+        print("Pet Companion stopping...")
+        return
+    print("Error: failed to stop Pet Companion", file=sys.stderr)
+    sys.exit(1)
 
 
 def _find_overlay_script() -> tuple[str | None, str | None]:
@@ -218,6 +246,47 @@ def _overlay_log_path(name: str) -> Path:
     log_path = Path.home() / ".config" / "pet-companion" / "overlay.log"
     log_path.parent.mkdir(parents=True, exist_ok=True)
     return log_path.parent / name
+
+
+def _runtime_dir() -> Path:
+    runtime_dir = Path.home() / ".config" / "pet-companion"
+    runtime_dir.mkdir(parents=True, exist_ok=True)
+    return runtime_dir
+
+
+def _runtime_pid_path(name: str) -> Path:
+    return _runtime_dir() / f"{name}.pid"
+
+
+def _write_pid_file(name: str, pid: int) -> None:
+    _runtime_pid_path(name).write_text(f"{pid}\n", encoding="utf-8")
+
+
+def _read_pid_file(name: str) -> int | None:
+    path = _runtime_pid_path(name)
+    if not path.exists():
+        return None
+    try:
+        return int(path.read_text(encoding="utf-8").strip())
+    except (OSError, ValueError):
+        return None
+
+
+def _remove_pid_file(name: str) -> None:
+    try:
+        _runtime_pid_path(name).unlink()
+    except FileNotFoundError:
+        pass
+
+
+def _terminate_pid(pid: int) -> bool:
+    try:
+        os.kill(pid, signal.SIGTERM)
+        return True
+    except ProcessLookupError:
+        return False
+    except OSError:
+        return False
 
 
 def _desktop_dir() -> Path:
@@ -268,13 +337,14 @@ def _launch_electron_overlay(url: str, verbose: bool = False) -> bool:
             cmd = [electron, str(main_js), "--url", url]
             if verbose:
                 cmd.append("--verbose")
-            subprocess.Popen(
+            proc = subprocess.Popen(
                 cmd,
                 cwd=_desktop_dir(),
                 env=env,
                 stdout=log_file,
                 stderr=log_file,
             )
+        _write_pid_file("overlay", proc.pid)
         LOG.info("Electron overlay launched (electron=%s, log=%s)", electron, log_path)
         return True
     except Exception as e:
@@ -299,7 +369,8 @@ def _launch_gtk_overlay(url: str, verbose: bool = False) -> bool:
             cmd = [python, overlay_path, "--url", url]
             if verbose:
                 cmd.append("--verbose")
-            subprocess.Popen(cmd, stdout=log_file, stderr=log_file)
+            proc = subprocess.Popen(cmd, stdout=log_file, stderr=log_file)
+        _write_pid_file("overlay", proc.pid)
         LOG.info("Overlay launched (python=%s, log=%s)", python, log_path)
         return True
     except Exception as e:
@@ -534,6 +605,15 @@ def main() -> None:
     p_start.add_argument("--pet", "-P", help="Pet to launch (e.g. tux, clippit, dario)")
     p_start.add_argument("--verbose", "-v", action="store_true")
     p_start.set_defaults(func=cmd_start)
+
+    # finish / end
+    p_finish = sub.add_parser("finish", help="Stop the pet companion server")
+    p_finish.add_argument("--port", "-p", type=int, default=DEFAULT_PORT)
+    p_finish.set_defaults(func=cmd_finish)
+
+    p_end = sub.add_parser("end", help="Stop the pet companion server")
+    p_end.add_argument("--port", "-p", type=int, default=DEFAULT_PORT)
+    p_end.set_defaults(func=cmd_finish)
 
     # overlay
     p_overlay = sub.add_parser("overlay", help="Open the desktop overlay window")
