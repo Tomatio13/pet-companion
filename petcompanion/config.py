@@ -13,6 +13,7 @@ DEFAULT_PET_CONFIG: dict = {
     "eventMode": "full",
     "walkingEnabled": True,
     "petScale": 1,
+    "bubbleDurationSeconds": 3,
     "custom": {
         "name": "Tux",
         "glyph": "\U0001f427",
@@ -20,6 +21,28 @@ DEFAULT_PET_CONFIG: dict = {
         "greeting": "Hi! I'm Tux. Let's code!",
     },
 }
+
+MIN_BUBBLE_DURATION_SECONDS = 1
+MAX_BUBBLE_DURATION_SECONDS = 30
+
+
+def _normalize_bubble_duration(value: object) -> int:
+    if not isinstance(value, (int, float)) or isinstance(value, bool):
+        return DEFAULT_PET_CONFIG["bubbleDurationSeconds"]
+    seconds = int(round(float(value)))
+    return max(MIN_BUBBLE_DURATION_SECONDS, min(MAX_BUBBLE_DURATION_SECONDS, seconds))
+
+
+def normalize_config(config: dict) -> dict:
+    merged = dict(DEFAULT_PET_CONFIG)
+    merged.update(config)
+    merged["bubbleDurationSeconds"] = _normalize_bubble_duration(
+        merged.get("bubbleDurationSeconds")
+    )
+    custom = dict(DEFAULT_PET_CONFIG["custom"])
+    custom.update(config.get("custom", {}))
+    merged["custom"] = custom
+    return merged
 
 
 def _config_dir() -> Path:
@@ -60,23 +83,18 @@ def load_config() -> dict:
     if not path.exists():
         ensure_dirs()
         save_config(DEFAULT_PET_CONFIG)
-        return dict(DEFAULT_PET_CONFIG)
+        return normalize_config(DEFAULT_PET_CONFIG)
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except (json.JSONDecodeError, OSError):
-        return dict(DEFAULT_PET_CONFIG)
-    # Merge with defaults for forward-compat
-    merged = dict(DEFAULT_PET_CONFIG)
-    merged.update(data)
-    custom = dict(DEFAULT_PET_CONFIG["custom"])
-    custom.update(data.get("custom", {}))
-    merged["custom"] = custom
-    return merged
+        return normalize_config(DEFAULT_PET_CONFIG)
+    return normalize_config(data)
 
 
 def save_config(config: dict) -> None:
     ensure_dirs()
+    normalized = normalize_config(config)
     config_file().write_text(
-        json.dumps(config, indent=2, ensure_ascii=False) + "\n",
+        json.dumps(normalized, indent=2, ensure_ascii=False) + "\n",
         encoding="utf-8",
     )
