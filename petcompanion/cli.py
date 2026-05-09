@@ -141,6 +141,14 @@ def _emit_event(
         pass
 
 
+def _post_event(event: dict, *, port: int) -> dict:
+    url = f"http://127.0.0.1:{port}/api/event"
+    data = json.dumps(event).encode()
+    req = Request(url, data=data, headers={"Content-Type": "application/json"})
+    resp = urlopen(req, timeout=3)
+    return json.loads(resp.read())
+
+
 def cmd_start(args: argparse.Namespace) -> None:
     logging.basicConfig(
         level=logging.DEBUG if args.verbose else logging.INFO,
@@ -456,17 +464,30 @@ def cmd_emit(args: argparse.Namespace) -> None:
     if args.message:
         event["message"] = args.message
 
-    url = f"http://127.0.0.1:{args.port}/api/event"
-    data = json.dumps(event).encode()
-    req = Request(url, data=data, headers={"Content-Type": "application/json"})
     try:
-        resp = urlopen(req, timeout=3)
-        result = json.loads(resp.read())
+        result = _post_event(event, port=args.port)
         delivered = result.get("delivered", 0)
         if delivered:
             print(f"Event '{args.event_type}' delivered to {delivered} client(s)")
         else:
             print(f"Event '{args.event_type}' accepted (no connected clients)")
+    except URLError:
+        print(
+            f"Error: Pet Companion is not running on port {args.port}", file=sys.stderr
+        )
+        print("Start it with: pet-companion start", file=sys.stderr)
+        sys.exit(1)
+
+
+def cmd_say(args: argparse.Namespace) -> None:
+    event = {"type": "message", "message": args.message}
+    try:
+        result = _post_event(event, port=args.port)
+        delivered = result.get("delivered", 0)
+        if delivered:
+            print(f"Message delivered to {delivered} client(s)")
+        else:
+            print("Message accepted (no connected clients)")
     except URLError:
         print(
             f"Error: Pet Companion is not running on port {args.port}", file=sys.stderr
@@ -640,6 +661,13 @@ def main() -> None:
     p_emit.add_argument("--message", "-m", help="Custom message for speech bubble")
     p_emit.add_argument("--port", "-p", type=int, default=DEFAULT_PORT)
     p_emit.set_defaults(func=cmd_emit)
+
+    p_say = sub.add_parser("say", help="Send a speech bubble message")
+    p_say.add_argument(
+        "--message", "-m", required=True, help="Message to show in the speech bubble"
+    )
+    p_say.add_argument("--port", "-p", type=int, default=DEFAULT_PORT)
+    p_say.set_defaults(func=cmd_say)
 
     p_hook_emit = sub.add_parser(
         "hook-emit", help="Read hook JSON from stdin and emit a pet event"

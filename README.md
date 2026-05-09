@@ -124,6 +124,7 @@ pet-companion start --browser [--pet tux]          # Start in a normal browser
 pet-companion start --overlay-backend gtk          # Force GTK overlay on Linux
 pet-companion start --overlay-backend electron     # Force Electron overlay (Windows / macOS)
 pet-companion emit <event-type> [options]          # Send an event
+pet-companion say --message "Hadoken!"             # Show a speech bubble message
 pet-companion list                                 # List available pets
 pet-companion install-hooks <agent>                # Show hook config for an agent
 ```
@@ -149,6 +150,7 @@ Examples:
 pet-companion emit thinking --port 19822
 pet-companion emit tool-use --port 19822
 pet-companion emit tool-result --status error --message "Build failed" --port 19822
+pet-companion say --message "Hadoken!" --port 19822
 pet-companion emit idle --port 19822
 ```
 

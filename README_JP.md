@@ -124,6 +124,7 @@ pet-companion start --browser [--pet tux]          # ブラウザで起動
 pet-companion start --overlay-backend gtk          # Linux で GTK を強制
 pet-companion start --overlay-backend electron     # Electron を強制（Windows / macOS）
 pet-companion emit <event-type> [options]          # イベント送信
+pet-companion say --message "波動拳！"              # 吹き出しメッセージ送信
 pet-companion list                                 # 利用可能な pet 一覧
 pet-companion install-hooks <agent>                # hook 設定例を表示
 ```
@@ -149,6 +150,7 @@ pet-companion install-hooks <agent>                # hook 設定例を表示
 pet-companion emit thinking --port 19822
 pet-companion emit tool-use --port 19822
 pet-companion emit tool-result --status error --message "Build failed" --port 19822
+pet-companion say --message "波動拳！" --port 19822
 pet-companion emit idle --port 19822
 ```
 
