@@ -331,6 +331,7 @@ pet-companion emit tool-result --status error --message "Build failed" --port 19
   "petId": "jovithulhu",
   "walkingEnabled": true,
   "petScale": 1.5,
+  "bubbleDurationSeconds": 5,
   "custom": {
     "name": "Buddy",
     "glyph": "🐾",
@@ -350,6 +351,8 @@ pet-companion emit tool-result --status error --message "Build failed" --port 19
   overlay の倍率。`1` が標準、`1.5` が 150%、`2` が 200%
 - `walkingEnabled`
   `true` で自律散歩を有効化、`false` で無効化
+- `bubbleDurationSeconds`
+  吹き出しの表示秒数。`1` から `30` の範囲で保存
 - `custom.accent`
   吹き出し枠線やアクセント色
 - `custom.bubbleBg`

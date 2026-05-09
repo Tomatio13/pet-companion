@@ -331,6 +331,7 @@ Main config is stored at `~/.config/pet-companion/pet.json`:
   "petId": "jovithulhu",
   "walkingEnabled": true,
   "petScale": 1.5,
+  "bubbleDurationSeconds": 5,
   "custom": {
     "name": "Buddy",
     "glyph": "🐾",
@@ -350,6 +351,8 @@ Key fields:
   Overlay scale multiplier. `1` is default, `1.5` is 150%, `2` is 200%.
 - `walkingEnabled`
   Set `true` to enable autonomous walking, `false` to disable it.
+- `bubbleDurationSeconds`
+  Speech bubble visibility duration, stored between `1` and `30` seconds.
 - `custom.accent`
   Accent color for the bubble border and pet highlight.
 - `custom.bubbleBg`

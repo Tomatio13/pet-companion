@@ -31,6 +31,7 @@ export interface PetConfig {
   eventMode?: 'full' | 'message-only';
   walkingEnabled?: boolean;
   petScale?: number;
+  bubbleDurationSeconds?: number;
   custom: PetCustom;
 }
 

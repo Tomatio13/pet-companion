@@ -69,11 +69,25 @@ const DRAG_AXIS_BIAS = 1.18;
 const DEFAULT_PET_SCALE = 1;
 const MIN_PET_SCALE = 0.5;
 const MAX_PET_SCALE = 3;
+const DEFAULT_BUBBLE_DURATION_SECONDS = 3;
+const MIN_BUBBLE_DURATION_SECONDS = 1;
+const MAX_BUBBLE_DURATION_SECONDS = 30;
 const MIN_POSITION = -48;
 
 function resolvePetScale(value: number | undefined): number {
   if (!Number.isFinite(value as number)) return DEFAULT_PET_SCALE;
   return Math.max(MIN_PET_SCALE, Math.min(MAX_PET_SCALE, Number(value)));
+}
+
+function resolveBubbleDurationMs(value: number | undefined): number {
+  if (!Number.isFinite(value as number)) {
+    return DEFAULT_BUBBLE_DURATION_SECONDS * 1000;
+  }
+  const seconds = Math.max(
+    MIN_BUBBLE_DURATION_SECONDS,
+    Math.min(MAX_BUBBLE_DURATION_SECONDS, Number(value)),
+  );
+  return Math.round(seconds * 1000);
 }
 
 function loadPosition(): Position {
@@ -134,6 +148,7 @@ export function PetOverlay({ pet }: Props) {
   const eventMode = pet?.eventMode ?? "full";
   const walkingEnabled = pet?.walkingEnabled ?? true;
   const petScale = resolvePetScale(pet?.petScale);
+  const bubbleDurationMs = resolveBubbleDurationMs(pet?.bubbleDurationSeconds);
   const [bubbleOpen, setBubbleOpen] = useState(false);
   const [ambientIdx, setAmbientIdx] = useState(0);
   const [position, setPosition] = useState<Position>(() => loadPosition());
@@ -164,7 +179,7 @@ export function PetOverlay({ pet }: Props) {
   const interactionRef = useRef<PetInteraction>("idle");
   const positionRef = useRef(position);
 
-  const openBubble = useCallback((line: string, durationMs = 3000) => {
+  const openBubble = useCallback((line: string, durationMs = bubbleDurationMs) => {
     setBubbleLine(line);
     setBubbleOpen(true);
     clearWindowTimer(bubbleTimeoutRef);
@@ -172,11 +187,11 @@ export function PetOverlay({ pet }: Props) {
       setBubbleOpen(false);
       bubbleTimeoutRef.current = null;
     }, durationMs);
-  }, []);
+  }, [bubbleDurationMs]);
 
   useEffect(() => {
     if (!active) return;
-    openBubble(active.greeting, 4000);
+    openBubble(active.greeting);
   }, [active?.id, active?.greeting, openBubble]);
 
   useEffect(() => {
